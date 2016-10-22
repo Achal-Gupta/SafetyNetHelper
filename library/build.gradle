@@ -1,0 +1,17 @@
+apply plugin: 'com.android.library'
+
+android {
+  compileSdkVersion 24
+  buildToolsVersion "24.0.3"
+
+  defaultConfig {
+    minSdkVersion 11
+    targetSdkVersion 24
+  }
+}
+
+dependencies {
+  compile 'com.google.android.gms:play-services-safetynet:9.6.1'
+}
+
+apply from: 'publication.gradle'
