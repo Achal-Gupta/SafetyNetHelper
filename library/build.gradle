@@ -11,7 +11,7 @@ android {
 }
 
 dependencies {
-  compile 'com.google.android.gms:play-services-safetynet:9.6.1'
+  compile 'com.google.android.gms:play-services-safetynet:9.8.00'
 }
 
 apply from: 'publication.gradle'
