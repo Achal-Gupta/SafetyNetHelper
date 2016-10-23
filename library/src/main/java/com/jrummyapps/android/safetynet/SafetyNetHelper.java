@@ -25,6 +25,7 @@ import android.content.pm.Signature;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
@@ -105,9 +106,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   private static final String SHA_256 = "SHA-256";
   private static final String TAG = "SafetyNetHelper";
 
-  private static List<String> apkCertificateDigests;
   private static SecureRandom secureRandom;
-  private static String apkDigestSha256;
 
   /**
    * Create a request to the {@link SafetyNet}.
@@ -319,7 +318,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
     cancel = true;
   }
 
-  private void onError(final int errorCode, final String reason) {
+  private void onError(@SafetyNetErrorCode final int errorCode, final String reason) {
     if (!cancel) {
       handler.post(new Runnable() {
 
@@ -363,8 +362,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
 
     boolean isValidApkSignature = true;
     if (response.apkCertificateDigestSha256 != null && response.apkCertificateDigestSha256.length > 0) {
-      isValidApkSignature = Arrays.equals(getApkCertificateDigests().toArray(),
-          response.apkCertificateDigestSha256);
+      isValidApkSignature = Arrays.equals(getApkCertificateDigests().toArray(), response.apkCertificateDigestSha256);
     }
 
     boolean isValidApkDigest = true;
@@ -380,48 +378,43 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   }
 
   @Nullable private String getApkDigestSha256() {
-    if (apkDigestSha256 == null) {
+    try {
+      FileInputStream fis = new FileInputStream(context.getPackageCodePath());
+      MessageDigest md = MessageDigest.getInstance(SHA_256);
       try {
-        FileInputStream fis = new FileInputStream(context.getPackageCodePath());
-        MessageDigest md = MessageDigest.getInstance(SHA_256);
-        try {
-          DigestInputStream dis = new DigestInputStream(fis, md);
-          byte[] buffer = new byte[2048];
-          while (dis.read(buffer) != -1) {
-            //
-          }
-          dis.close();
-        } finally {
-          fis.close();
+        DigestInputStream dis = new DigestInputStream(fis, md);
+        byte[] buffer = new byte[2048];
+        while (dis.read(buffer) != -1) {
+          //
         }
-        apkDigestSha256 = Base64.encodeToString(md.digest(), Base64.NO_WRAP);
-      } catch (IOException | NoSuchAlgorithmException e) {
-        return null;
+        dis.close();
+      } finally {
+        fis.close();
       }
+      return Base64.encodeToString(md.digest(), Base64.NO_WRAP);
+    } catch (IOException | NoSuchAlgorithmException e) {
+      return null;
     }
-    return apkDigestSha256;
   }
 
   @SuppressLint("PackageManagerGetSignatures")
   private List<String> getApkCertificateDigests() {
-    if (apkCertificateDigests == null || apkCertificateDigests.isEmpty()) {
-      apkCertificateDigests = new ArrayList<>();
-      PackageManager pm = context.getPackageManager();
-      PackageInfo packageInfo;
+    List<String> apkCertificateDigests = new ArrayList<>();
+    PackageManager pm = context.getPackageManager();
+    PackageInfo packageInfo;
+    try {
+      packageInfo = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES);
+    } catch (PackageManager.NameNotFoundException wtf) {
+      return apkCertificateDigests;
+    }
+    Signature[] signatures = packageInfo.signatures;
+    for (Signature signature : signatures) {
       try {
-        packageInfo = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES);
-      } catch (PackageManager.NameNotFoundException wtf) {
-        return apkCertificateDigests;
-      }
-      Signature[] signatures = packageInfo.signatures;
-      for (Signature signature : signatures) {
-        try {
-          MessageDigest md = MessageDigest.getInstance(SHA_256);
-          md.update(signature.toByteArray());
-          byte[] digest = md.digest();
-          apkCertificateDigests.add(Base64.encodeToString(digest, Base64.NO_WRAP));
-        } catch (NoSuchAlgorithmException ignored) {
-        }
+        MessageDigest md = MessageDigest.getInstance(SHA_256);
+        md.update(signature.toByteArray());
+        byte[] digest = md.digest();
+        apkCertificateDigests.add(Base64.encodeToString(digest, Base64.NO_WRAP));
+      } catch (NoSuchAlgorithmException ignored) {
       }
     }
     return apkCertificateDigests;
@@ -527,6 +520,9 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
 
   }
 
+  /**
+   * An exception used when retrieving or parsing a response from the {@link SafetyNet} API failed.
+   */
   public static class SafetyNetError extends Exception {
 
     public SafetyNetError(Throwable cause) {
@@ -535,10 +531,34 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
 
   }
 
+  @IntDef({RESPONSE_FAILED_ATTESTATION, RESPONSE_FAILED_CONNECTION, RESPONSE_FAILED_PARSING_JWS})
+  public @interface SafetyNetErrorCode {
+
+  }
+
+  /**
+   * Interface definition for a callback to be invoked during/after the {@link SafetyNet} API is queried.
+   */
   public interface SafetyNetListener {
 
-    void onError(int errorCode, String reason);
+    /**
+     * Called when an error occurs while trying to receive a response from the {@link SafetyNet} API.
+     *
+     * @param errorCode
+     *     The error code
+     * @param reason
+     *     The error reason
+     */
+    void onError(@SafetyNetErrorCode int errorCode, String reason);
 
+    /**
+     * Called when the {@link SafetyNet} API returns a valid response.
+     *
+     * @param response
+     *     The {@link SafetyNet} API response
+     * @param verification
+     *     Contains info about the validity of the response.
+     */
     void onFinished(SafetyNetResponse response, SafetyNetVerification verification);
 
   }

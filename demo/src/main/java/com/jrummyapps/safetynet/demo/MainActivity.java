@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         .setApiKey(apiKey.getText().toString()) // https://developer.android.com/training/safetynet/index.html
         .addSafetyNetListener(new SafetyNetHelper.SafetyNetListener() {
 
-          @Override public void onError(int errorCode, String reason) {
+          @Override public void onError(@SafetyNetHelper.SafetyNetErrorCode int errorCode, String reason) {
             Spanned html = new HtmlBuilder().font(Color.RED, "ERROR: ").append(reason).toSpan();
             resultText.setText(html);
           }
