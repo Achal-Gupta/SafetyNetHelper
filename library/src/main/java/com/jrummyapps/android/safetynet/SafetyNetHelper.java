@@ -254,6 +254,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   private final String apiKey;
   private GoogleApiClient googleApiClient;
   private long requestTimestamp;
+  private boolean running;
   private boolean cancel;
 
   private SafetyNetHelper(Builder builder) {
@@ -265,6 +266,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   }
 
   @Override public void run() {
+    running = true;
     googleApiClient = new GoogleApiClient.Builder(context)
         .addOnConnectionFailedListener(this)
         .addConnectionCallbacks(this)
@@ -312,6 +314,15 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   }
 
   /**
+   * Check if the process is running in the background.
+   *
+   * @return {@code true} if the {@link SafetyNet} API is currently being queried.
+   */
+  public boolean isRunning() {
+    return running;
+  }
+
+  /**
    * Cancel running or posting the results
    */
   public void cancel() {
@@ -319,6 +330,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   }
 
   private void onError(@SafetyNetErrorCode final int errorCode, final String reason) {
+    running = false;
     if (!cancel) {
       handler.post(new Runnable() {
 
@@ -332,6 +344,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
   }
 
   private void onFinished(final SafetyNetResponse response, final SafetyNetVerification verification) {
+    running = false;
     if (!cancel) {
       handler.post(new Runnable() {
 
