@@ -11,7 +11,14 @@ android {
 }
 
 dependencies {
-  compile 'com.google.android.gms:play-services-safetynet:9.8.00'
+  compile 'com.google.android.gms:play-services-safetynet:9.8.0'
 }
 
-apply from: 'publication.gradle'
+// Private Artifactory Upload
+//apply from: 'publication.gradle'
+
+// Maven Central Upload
+//apply from: 'gradle-mvn-push.gradle'
+//afterEvaluate {
+//  androidJavadocs.classpath += project.android.libraryVariants.toList().first().javaCompile.classpath
+//}
