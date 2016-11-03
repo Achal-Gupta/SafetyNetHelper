@@ -1,4 +1,4 @@
-# SafetyNetHelper
+# SafetyNetHelper <a target="_blank" href="https://twitter.com/jrummyapps"><img src="https://img.shields.io/twitter/follow/jrummyapps.svg?style=social" /></a>
 A small library that wraps the Google Play Services SafetyNet API.
 
 # Usage
@@ -19,6 +19,18 @@ SafetyNetHelper.with(this)
       }
     })
     .run();
+```
+
+# Download
+
+<a target="_blank" href="https://developer.android.com/reference/android/os/Build.VERSION_CODES.html#HONEYCOMB"><img src="https://img.shields.io/badge/API-11%2B-blue.svg?style=flat" alt="API" /></a>
+  <a target="_blank" href="LICENSE.txt"><img src="http://img.shields.io/:license-apache-blue.svg" alt="License" /></a>
+  <a target="_blank" href="https://maven-badges.herokuapp.com/maven-central/com.jrummyapps/safetynethelper"><img src="https://maven-badges.herokuapp.com/maven-central/com.jrummyapps/safetynethelper/badge.svg" alt="Maven Central" /></a>
+
+Add the dependency to your app level build.gradle file:
+
+```groovy
+compile 'com.jrummyapps:safetynethelper:{latest-version}'
 ```
 
 # License
