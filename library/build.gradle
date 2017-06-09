@@ -5,13 +5,13 @@ android {
   buildToolsVersion '25.0.2'
 
   defaultConfig {
-    minSdkVersion 11
+    minSdkVersion 14
     targetSdkVersion 24
   }
 }
 
 dependencies {
-  compile 'com.google.android.gms:play-services-safetynet:9.8.0'
+  compile 'com.google.android.gms:play-services-safetynet:10.2.6'
 }
 
 // Private Artifactory Upload
