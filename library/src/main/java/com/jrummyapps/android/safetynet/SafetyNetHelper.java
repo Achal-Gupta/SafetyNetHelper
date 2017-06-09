@@ -31,17 +31,12 @@ import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.safetynet.SafetyNet;
 import com.google.android.gms.safetynet.SafetyNetApi;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -63,12 +58,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * <a href="https://developer.android.com/training/safetynet/index.html">SafetyNet: Google's tamper detection.</a>
@@ -89,6 +85,11 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
    * The error code used when parsing the JSON Web Signature failed.
    */
   public static final int RESPONSE_FAILED_PARSING_JWS = 3;
+
+  /**
+   * An unknown error occurred.
+   */
+  public static final int UNKNOWN_ERROR = 4;
 
   /**
    * URL to use the Android Device Verification API which only validates that the provided JWS message was received
@@ -283,21 +284,25 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
     Runnable runnable = new Runnable() {
 
       @Override public void run() {
-        requestTimestamp = System.currentTimeMillis();
-        SafetyNetApi.AttestationResult result = SafetyNet.SafetyNetApi.attest(googleApiClient, nonce).await();
-        if (cancel) {
-          return;
-        }
-        if (!result.getStatus().isSuccess()) {
-          onError(RESPONSE_FAILED_ATTESTATION, "An error occurred while communicating with SafetyNet.");
-          return;
-        }
         try {
-          SafetyNetResponse response = getSafetyNetResponseFromJws(result.getJwsResult());
-          SafetyNetVerification verification = verify(response);
-          onFinished(response, verification);
-        } catch (SafetyNetError e) {
-          onError(RESPONSE_FAILED_PARSING_JWS, e.getLocalizedMessage());
+          requestTimestamp = System.currentTimeMillis();
+          SafetyNetApi.AttestationResult result = SafetyNet.SafetyNetApi.attest(googleApiClient, nonce).await();
+          if (cancel) {
+            return;
+          }
+          if (!result.getStatus().isSuccess()) {
+            onError(RESPONSE_FAILED_ATTESTATION, "An error occurred while communicating with SafetyNet.");
+            return;
+          }
+          try {
+            SafetyNetResponse response = getSafetyNetResponseFromJws(result.getJwsResult());
+            SafetyNetVerification verification = verify(response);
+            onFinished(response, verification);
+          } catch (SafetyNetError e) {
+            onError(RESPONSE_FAILED_PARSING_JWS, e.getLocalizedMessage());
+          }
+        } catch (Exception e) {
+          onError(UNKNOWN_ERROR, e.getLocalizedMessage());
         }
       }
     };
@@ -335,8 +340,12 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
       handler.post(new Runnable() {
 
         @Override public void run() {
-          for (SafetyNetListener listener : listeners) {
-            listener.onError(errorCode, reason);
+          try {
+            for (SafetyNetListener listener : listeners) {
+              listener.onError(errorCode, reason);
+            }
+          } catch (IllegalStateException e) {
+            Log.e(TAG, "Error calling listener", e);
           }
         }
       });
@@ -349,8 +358,12 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
       handler.post(new Runnable() {
 
         @Override public void run() {
-          for (SafetyNetListener listener : listeners) {
-            listener.onFinished(response, verification);
+          try {
+            for (SafetyNetListener listener : listeners) {
+              listener.onFinished(response, verification);
+            }
+          } catch (IllegalStateException e) {
+            Log.e(TAG, "Error calling listener", e);
           }
         }
       });
@@ -544,7 +557,7 @@ public class SafetyNetHelper implements Runnable, OnConnectionFailedListener, Co
 
   }
 
-  @IntDef({RESPONSE_FAILED_ATTESTATION, RESPONSE_FAILED_CONNECTION, RESPONSE_FAILED_PARSING_JWS})
+  @IntDef({RESPONSE_FAILED_ATTESTATION, RESPONSE_FAILED_CONNECTION, RESPONSE_FAILED_PARSING_JWS, UNKNOWN_ERROR})
   public @interface SafetyNetErrorCode {
 
   }
